@@ -14,6 +14,7 @@ import bpy
 from os import path, sep
 from bpy_extras.io_utils import ImportHelper
 from bpy.props import StringProperty
+import mathutils
 
 
 class ZoneFbxBlendTexturesPanel(bpy.types.Panel):
@@ -206,10 +207,16 @@ def add_and_swap_nodes(
     if color_attribute_node is None:
         color_attribute_node = nodes.new("ShaderNodeVertexColor")
         color_attribute_node.layer_name = "Attribute"
+        color_attribute_node.location.x = -1500
     mix_node = nodes.new("ShaderNodeMix")
     image_texture_node = nodes.new("ShaderNodeTexImage")
 
     # Set properties
+    mix_node.location = node_to_swap.location
+    image_texture_node.location = mathutils.Vector(
+        (-1200, node_to_swap.location.y - 300)
+    )
+    node_to_swap.location = mathutils.Vector((-900, node_to_swap.location.y - 150))
     mix_node.data_type = "RGBA"
     secondary_texture_path = path.join(directory, custom_property)
     image_texture_node.image = bpy.data.images.load(secondary_texture_path)
