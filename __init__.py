@@ -2,7 +2,7 @@ bl_info = {
     "name": "ZoneFbx Blender Plugin",
     "author": "Frey",
     "description": "Blender plugin to automate the process of blending textures for maps exported by ZoneFbx.",
-    "version": (0, 1, 1),
+    "version": (0, 1, 2),
     "location": "View3D > ZoneFbx",
     "blender": (2, 80, 0),
     "category": "Object",
