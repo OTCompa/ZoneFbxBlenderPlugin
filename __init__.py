@@ -81,7 +81,7 @@ class ZoneFbxImport(bpy.types.Operator, ImportHelper):
         if not sanitized_directory:
             return {"CANCELLED"}
 
-        bpy.ops.import_scene.fbx(filepath=self.filepath)
+        bpy.ops.wm.fbx_import(filepath=self.filepath)
 
         return blend_all_materials(sanitized_directory)
 
