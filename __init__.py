@@ -96,22 +96,25 @@ def wrap_text(element, full_text):
 
 def blend_all_materials(directory):
     for material in bpy.data.materials:
-        color_attribute_node = None
-        if "BlendDiffuse" in material:
-            color_attribute_node = blend_diffuse(
-                material, directory, color_attribute_node
-            )
-        # Commenting out for now cause it looks weird
-        # if 'BlendNormal' in material:
-        #     add_mix_node_normal(material)
-        if "BlendSpecular" in material:
-            color_attribute_node = blend_specular(
-                material, directory, color_attribute_node
-            )
-        if "BlendEmissive" in material:
-            color_attribute_node = blend_emissive(
-                material, directory, color_attribute_node
-            )
+        try:
+            color_attribute_node = None
+            if "BlendDiffuse" in material:
+                color_attribute_node = blend_diffuse(
+                    material, directory, color_attribute_node
+                )
+            # Commenting out for now cause it looks weird
+            # if 'BlendNormal' in material:
+            #     add_mix_node_normal(material)
+            if "BlendSpecular" in material:
+                color_attribute_node = blend_specular(
+                    material, directory, color_attribute_node
+                )
+            if "BlendEmissive" in material:
+                color_attribute_node = blend_emissive(
+                    material, directory, color_attribute_node
+                )
+        except Exception as e:
+            print(f"Error in material {material.name}: {e}")
     return {"FINISHED"}
 
 
