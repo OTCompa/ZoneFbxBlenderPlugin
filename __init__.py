@@ -105,10 +105,12 @@ def blend_all_materials(directory):
             # Commenting out for now cause it looks weird
             # if 'BlendNormal' in material:
             #     add_mix_node_normal(material)
+            split_specular(material)
             if "BlendSpecular" in material:
                 color_attribute_node = blend_specular(
                     material, directory, color_attribute_node
                 )
+            disconnect_specular_tint(material)
             if "BlendEmissive" in material:
                 color_attribute_node = blend_emissive(
                     material, directory, color_attribute_node
@@ -174,7 +176,7 @@ def blend_normal(material, directory, color_attribute_node):
 def blend_specular(material, directory, color_attribute_node):
     tree = material.node_tree
     main_node = tree.nodes["Principled BSDF"]
-    main_texture_node = main_node.inputs["Specular IOR Level"].links[0].from_node
+    main_texture_node = main_node.inputs["Specular Tint"].links[0].from_node
     return add_and_swap_nodes(
         tree,
         main_texture_node,
@@ -183,6 +185,29 @@ def blend_specular(material, directory, color_attribute_node):
         directory,
         color_attribute_node,
     )
+
+
+def split_specular(material):
+    tree = material.node_tree
+    main_node = tree.nodes["Principled BSDF"]
+    specular_texture_node = main_node.inputs["Specular Tint"].links[0].from_node
+
+    separate_color_node = tree.nodes.new("ShaderNodeSeparateColor")
+    separate_color_node.location = mathutils.Vector(
+        (specular_texture_node.location.x + 300, specular_texture_node.location.y)
+    )
+
+    tree.links.new(specular_texture_node.outputs["Color"], separate_color_node.inputs["Color"])
+    tree.links.new(separate_color_node.outputs["Green"], main_node.inputs["Roughness"])
+    tree.links.new(separate_color_node.outputs["Blue"], main_node.inputs["Metallic"])
+
+
+def disconnect_specular_tint(material):
+    tree = material.node_tree
+    main_node = tree.nodes["Principled BSDF"]
+    specular_tint_input = main_node.inputs["Specular Tint"]
+    for link in list(specular_tint_input.links):
+        tree.links.remove(link)
 
 
 def blend_emissive(material, directory, color_attribute_node):
@@ -197,6 +222,7 @@ def blend_emissive(material, directory, color_attribute_node):
         directory,
         color_attribute_node,
     )
+
 
 
 def add_and_swap_nodes(
