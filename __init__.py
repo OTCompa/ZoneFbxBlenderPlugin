@@ -13,8 +13,24 @@ import bpy
 
 from os import path, sep
 from bpy_extras.io_utils import ImportHelper
-from bpy.props import StringProperty
+from bpy.props import StringProperty, FloatProperty, BoolProperty
+from bpy.types import PropertyGroup
 import mathutils
+
+
+class ZoneFbxSettings(PropertyGroup):
+    default_ior: FloatProperty(
+        name="Default IOR",
+        description="Default IOR level applied to all materials",
+        default=1.0,
+        min=0.0,
+        soft_max=3.0,
+    )
+    disable_split_specular: BoolProperty(
+        name="Disable specular handling",
+        description="Skip the split_specular() step when processing materials",
+        default=False,
+    )
 
 
 class ZoneFbxBlendTexturesPanel(bpy.types.Panel):
@@ -26,6 +42,13 @@ class ZoneFbxBlendTexturesPanel(bpy.types.Panel):
 
     def draw(self, context):
         layout = self.layout
+        settings = context.scene.zonefbx_settings
+
+        settingsBox = layout.box()
+        settingsBox.label(text="Settings")
+        settingsBox.prop(settings, "default_ior")
+        settingsBox.prop(settings, "disable_split_specular")
+
         toImport = layout.box()
         wrap_text(toImport, "Import an FBX file from ZoneFbx")
         toImport.operator(ZoneFbxImport.bl_idname)
@@ -58,7 +81,8 @@ class ZoneFbxBlendTextures(bpy.types.Operator, ImportHelper):
         if not sanitized_directory:
             return {"CANCELLED"}
 
-        return blend_all_materials(sanitized_directory)
+        settings = context.scene.zonefbx_settings
+        return blend_all_materials(sanitized_directory, settings)
 
 
 class ZoneFbxImport(bpy.types.Operator, ImportHelper):
@@ -83,7 +107,8 @@ class ZoneFbxImport(bpy.types.Operator, ImportHelper):
 
         bpy.ops.wm.fbx_import(filepath=self.filepath)
 
-        return blend_all_materials(sanitized_directory)
+        settings = context.scene.zonefbx_settings
+        return blend_all_materials(sanitized_directory, settings)
 
 
 def wrap_text(element, full_text):
@@ -94,7 +119,7 @@ def wrap_text(element, full_text):
         row.label(text=text)
 
 
-def blend_all_materials(directory):
+def blend_all_materials(directory, settings):
     for material in bpy.data.materials:
         try:
             color_attribute_node = None
@@ -105,12 +130,14 @@ def blend_all_materials(directory):
             # Commenting out for now cause it looks weird
             # if 'BlendNormal' in material:
             #     add_mix_node_normal(material)
-            split_specular(material)
+            if not settings.disable_split_specular:
+                split_specular(material)
             if "BlendSpecular" in material:
                 color_attribute_node = blend_specular(
                     material, directory, color_attribute_node
                 )
             disconnect_specular_tint(material)
+            set_ior(material, settings.default_ior)
             if "BlendEmissive" in material:
                 color_attribute_node = blend_emissive(
                     material, directory, color_attribute_node
@@ -202,6 +229,13 @@ def split_specular(material):
     tree.links.new(separate_color_node.outputs["Blue"], main_node.inputs["Metallic"])
 
 
+def set_ior(material, ior_value):
+    tree = material.node_tree
+    main_node = tree.nodes.get("Principled BSDF")
+    if main_node and "IOR" in main_node.inputs:
+        main_node.inputs["IOR"].default_value = ior_value
+
+
 def disconnect_specular_tint(material):
     tree = material.node_tree
     main_node = tree.nodes["Principled BSDF"]
@@ -260,15 +294,19 @@ def add_and_swap_nodes(
 
 
 def register():
+    bpy.utils.register_class(ZoneFbxSettings)
     bpy.utils.register_class(ZoneFbxBlendTexturesPanel)
     bpy.utils.register_class(ZoneFbxImport)
     bpy.utils.register_class(ZoneFbxBlendTextures)
+    bpy.types.Scene.zonefbx_settings = bpy.props.PointerProperty(type=ZoneFbxSettings)
 
 
 def unregister():
+    del bpy.types.Scene.zonefbx_settings
     bpy.utils.unregister_class(ZoneFbxBlendTextures)
     bpy.utils.unregister_class(ZoneFbxImport)
     bpy.utils.unregister_class(ZoneFbxBlendTexturesPanel)
+    bpy.utils.unregister_class(ZoneFbxSettings)
 
 
 # This allows you to run the script directly from Blender's Text editor
